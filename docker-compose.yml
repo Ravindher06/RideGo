@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  customer-service:
+    build: ./services/customer-service
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/customer_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      FRONTEND_URL: http://localhost:3000
+    ports: ["8081:8081"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  rider-service:
+    build: ./services/rider-service
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/rider_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      FRONTEND_URL: http://localhost:3000
+    ports: ["8082:8082"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  booking-service:
+    build: ./services/booking-service
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/booking_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      CUSTOMER_SERVICE_URL: http://customer-service:8081
+      RIDER_SERVICE_URL: http://rider-service:8082
+      LOCATION_SERVICE_URL: http://location-service:8084
+      PAYMENT_SERVICE_URL: http://payment-service:8085
+      NOTIFICATION_SERVICE_URL: http://notification-service:8086
+      FRONTEND_URL: http://localhost:3000
+    ports: ["8083:8083"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      rider-service: {condition: service_started}
+      customer-service: {condition: service_started}
+      location-service: {condition: service_started}
+      payment-service: {condition: service_started}
+      notification-service: {condition: service_started}
+
+  location-service:
+    build: ./services/location-service
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RIDER_SERVICE_URL: http://rider-service:8082
+      FRONTEND_URL: http://localhost:3000
+    ports: ["8084:8084"]
+    depends_on:
+      redis: {condition: service_healthy}
+      rider-service: {condition: service_started}
+
+  payment-service:
+    build: ./services/payment-service
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/payment_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      FRONTEND_URL: http://localhost:3000
+      PAYMENT_SIMULATE_FAILURE_RATE: "0.0"
+    ports: ["8085:8085"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  notification-service:
+    build: ./services/notification-service
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/notification_db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      FRONTEND_URL: http://localhost:3000
+    ports: ["8086:8086"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  frontend:
+    build: .
+    environment:
+      NEXT_PUBLIC_CUSTOMER_SERVICE_URL: http://localhost:8081
+      NEXT_PUBLIC_RIDER_SERVICE_URL: http://localhost:8082
+      NEXT_PUBLIC_BOOKING_SERVICE_URL: http://localhost:8083
+    ports: ["3000:3000"]
+    depends_on:
+      - customer-service
+      - rider-service
+      - booking-service
+
+volumes:
+  postgres_data:
