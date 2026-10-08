@@ -1,0 +1,38 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: booking-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/app_db}?currentSchema=booking_schema
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# Internal Rest Client Integrations
+rapido:
+  services:
+    customer-url: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+    rider-url: ${RIDER_SERVICE_URL:http://localhost:8082}
+    location-url: ${LOCATION_SERVICE_URL:http://localhost:8084}
+    payment-url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+  dispatch:
+    # Radius in kilometres for the Redis GEO candidate search.
+    nearby-radius-km: ${DISPATCH_RADIUS_KM:5.0}
+    # Fallback to Rider Service flat ONLINE list when GEO has no candidates.
+    fallback-to-all-online: ${DISPATCH_FALLBACK:true}
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: INFO

@@ -1,0 +1,31 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: location-service
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+# Location ownership is Redis-based. We do not persist high-frequency
+# coordinates to PostgreSQL. Rider availability is still authoritative in
+# the Rider service, which we call to filter nearby results.
+rapido:
+  services:
+    rider-url: ${RIDER_SERVICE_URL:http://localhost:8082}
+
+  # Consider a rider location stale after this many seconds.
+  location-stale-seconds: ${LOCATION_STALE_SECONDS:60}
+
+logging:
+  level:
+    org.springframework.data.redis: INFO
+    org.springframework.web: INFO

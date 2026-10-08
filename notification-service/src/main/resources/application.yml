@@ -1,0 +1,30 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/app_db}?currentSchema=notification_schema
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+rapido:
+  notification:
+    # When true, "delivery" logs to the console (SMS/push/email stubs).
+    # Point these adapters at real providers later without changing callers.
+    console-delivery: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: INFO
